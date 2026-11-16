@@ -44,6 +44,7 @@ namespace DiagnosticMod
         {
             _sysMem.Dispose();
             _mainThread.Dispose();
+            DisposeSystemRecorders();
             base.OnDestroy();
         }
 
@@ -62,7 +63,8 @@ namespace DiagnosticMod
             float dt = now - _lastTime;
             if (dt < PeriodSeconds) return;
 
-            float fps = (UnityEngine.Time.frameCount - _lastFrame) / dt;
+            int frames = UnityEngine.Time.frameCount - _lastFrame;
+            float fps = frames / dt;
             _lastTime = now;
             _lastFrame = UnityEngine.Time.frameCount;
 
@@ -79,6 +81,8 @@ namespace DiagnosticMod
                 $"buildings={_buildings.CalculateEntityCount()} abandoned={_abandoned.CalculateEntityCount()} " +
                 $"citizens={_citizens.CalculateEntityCount()} vehicles={_vehicles.CalculateEntityCount()} " +
                 $"errors={Mod.ErrorCount}");
+
+            LogTopSystems(now, frames);
 
             _samples = _ftSamples = 0;
             _cpu = _main = _render = _gpu = _mainProfiler = 0;
