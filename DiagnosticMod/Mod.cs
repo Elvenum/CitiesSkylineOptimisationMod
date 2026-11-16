@@ -15,6 +15,9 @@ namespace DiagnosticMod
 
         public void OnLoad(UpdateSystem updateSystem)
         {
+            Log.Info($"DiagnosticMod v2 | app={Application.version} unity={Application.unityVersion} " +
+                     $"gpu={SystemInfo.graphicsDeviceName} vram={SystemInfo.graphicsMemorySize}MB " +
+                     $"cpu={SystemInfo.processorType} cores={SystemInfo.processorCount} ram={SystemInfo.systemMemorySize}MB");
             updateSystem.UpdateAt<DiagnosticSystem>(SystemUpdatePhase.GameSimulation);
             Application.logMessageReceived += OnUnityLog;
         }
