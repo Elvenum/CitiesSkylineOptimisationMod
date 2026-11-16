@@ -44,7 +44,6 @@ namespace DiagnosticMod
         {
             _sysMem.Dispose();
             _mainThread.Dispose();
-            DisposeSystemRecorders();
             base.OnDestroy();
         }
 
@@ -55,6 +54,7 @@ namespace DiagnosticMod
             {
                 _lastTime = now;
                 _lastFrame = UnityEngine.Time.frameCount;
+                SystemTimer.Data.Clear(); // drop everything timed during loading
                 return;
             }
 

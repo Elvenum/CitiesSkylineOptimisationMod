@@ -15,14 +15,20 @@ namespace DiagnosticMod
 
         public void OnLoad(UpdateSystem updateSystem)
         {
-            Log.Info($"DiagnosticMod v3 | app={Application.version} unity={Application.unityVersion} " +
+            Log.Info($"DiagnosticMod v4 | app={Application.version} unity={Application.unityVersion} " +
                      $"gpu={SystemInfo.graphicsDeviceName} vram={SystemInfo.graphicsMemorySize}MB " +
                      $"cpu={SystemInfo.processorType} cores={SystemInfo.processorCount} ram={SystemInfo.systemMemorySize}MB");
+            try { SystemTimer.Install(); }
+            catch (System.Exception e) { Log.Warn($"System timing disabled: {e}"); } // the rest of the mod still works without it
             updateSystem.UpdateAt<DiagnosticSystem>(SystemUpdatePhase.GameSimulation);
             Application.logMessageReceived += OnUnityLog;
         }
 
-        public void OnDispose() => Application.logMessageReceived -= OnUnityLog;
+        public void OnDispose()
+        {
+            Application.logMessageReceived -= OnUnityLog;
+            SystemTimer.Uninstall();
+        }
 
         private static void OnUnityLog(string message, string stack, LogType type)
         {

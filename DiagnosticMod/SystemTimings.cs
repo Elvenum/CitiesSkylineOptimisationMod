@@ -1,86 +1,91 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Reflection;
 using System.Text;
 using Colossal.Logging;
-using Unity.Profiling;
-using Unity.Profiling.LowLevel;
+using HarmonyLib;
+using Unity.Entities;
 using Unity.Profiling.LowLevel.Unsafe;
 
 namespace DiagnosticMod
 {
-    // Per-system CPU time. We don't know how this game version names its profiler markers, so we
-    // attach to every time marker named "Game.*System*" and dump the names once to
-    // DiagnosticMod.markers.log, so the next version can be adjusted from real data.
-    public partial class DiagnosticSystem
+    // The game exposes no per-system profiler markers (v3 found none), so every SystemBase.Update is timed with a
+    // Harmony patch. Time inside Update includes waiting for worker jobs, which is what blocks the main thread.
+    internal static class SystemTimer
     {
-        // shortcut: 1024 samples per marker, so the average is right only below ~17 fps over 60 s; raise if FPS gets higher.
-        private const int Capacity = 1024;
-        private const int MaxMarkers = 1000;
-        private const int TopCount = 15;
+        public sealed class Acc { public long Ticks; public int Calls; }
 
-        private static readonly ILog MarkerLog = LogManager.GetLogger("DiagnosticMod.markers").SetShowsErrorsInUI(false);
+        public static readonly Dictionary<Type, Acc> Data = new Dictionary<Type, Acc>();
+        private static Harmony _harmony;
 
-        private List<string> _names;
-        private List<ProfilerRecorder> _recorders;
-
-        // Markers appear lazily when systems first run, so they are attached at the end of the first window.
-        private void LogTopSystems(float now, int frames)
+        public static void Install()
         {
-            if (_recorders == null)
-            {
-                AttachRecorders();
-                return;
-            }
-
-            int used = Math.Max(1, Math.Min(frames, Capacity));
-            var totals = new List<KeyValuePair<double, int>>(_recorders.Count);
-            for (int i = 0; i < _recorders.Count; i++)
-            {
-                var r = _recorders[i];
-                int n = Math.Min(r.Count, used);
-                double sum = 0;
-                for (int s = r.Count - n; s < r.Count; s++) sum += r.GetSample(s).Value;
-                totals.Add(new KeyValuePair<double, int>(sum / used / 1e6, i)); // ns/frame -> ms/frame
-            }
-            totals.Sort((a, b) => b.Key.CompareTo(a.Key));
-
-            var sb = new StringBuilder($"TOP t={now:F0}s (ms per frame):");
-            for (int k = 0; k < Math.Min(TopCount, totals.Count); k++)
-                sb.Append($"\n  {totals[k].Key,7:F2}  {_names[totals[k].Value]}");
-            Mod.Log.Info(sb.ToString());
+            _harmony = new Harmony("DiagnosticMod.timing");
+            var target = typeof(SystemBase).GetMethod(nameof(SystemBase.Update),
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+            _harmony.Patch(target,
+                prefix: new HarmonyMethod(typeof(SystemTimer), nameof(Prefix)),
+                postfix: new HarmonyMethod(typeof(SystemTimer), nameof(Postfix)));
         }
 
-        private void AttachRecorders()
-        {
-            _names = new List<string>();
-            _recorders = new List<ProfilerRecorder>();
+        public static void Uninstall() => _harmony?.UnpatchAll(_harmony.Id);
 
+        private static void Prefix(out long __state) => __state = Stopwatch.GetTimestamp();
+
+        private static void Postfix(SystemBase __instance, long __state)
+        {
+            long d = Stopwatch.GetTimestamp() - __state;
+            var type = __instance.GetType();
+            if (!Data.TryGetValue(type, out var acc)) Data[type] = acc = new Acc();
+            acc.Ticks += d;
+            acc.Calls++;
+        }
+    }
+
+    public partial class DiagnosticSystem
+    {
+        private const int TopCount = 20;
+        private static readonly ILog MarkerLog = LogManager.GetLogger("DiagnosticMod.markers").SetShowsErrorsInUI(false);
+        private bool _dumped;
+
+        private void LogTopSystems(float now, int frames)
+        {
+            if (!_dumped) { DumpMarkerNames(); _dumped = true; }
+
+            var rows = new List<KeyValuePair<double, KeyValuePair<Type, SystemTimer.Acc>>>(SystemTimer.Data.Count);
+            double total = 0;
+            foreach (var kv in SystemTimer.Data)
+            {
+                double ms = kv.Value.Ticks * 1000.0 / Stopwatch.Frequency / Math.Max(1, frames); // ms per render frame
+                total += ms;
+                rows.Add(new KeyValuePair<double, KeyValuePair<Type, SystemTimer.Acc>>(ms, kv));
+            }
+            rows.Sort((a, b) => b.Key.CompareTo(a.Key));
+
+            var sb = new StringBuilder($"TOP t={now:F0}s systems={rows.Count} total={total:F1}ms/frame (ms per render frame, calls, ms per call):");
+            for (int i = 0; i < Math.Min(TopCount, rows.Count); i++)
+            {
+                var acc = rows[i].Value.Value;
+                double perCall = acc.Ticks * 1000.0 / Stopwatch.Frequency / Math.Max(1, acc.Calls);
+                sb.Append($"\n  {rows[i].Key,7:F2}  calls={acc.Calls,6}  {perCall,7:F3}  {rows[i].Value.Key.FullName}");
+            }
+            Mod.Log.Info(sb.ToString());
+            SystemTimer.Data.Clear();
+        }
+
+        // All marker names, once, to check that the game really has no per-system markers.
+        private void DumpMarkerNames()
+        {
             var handles = new List<ProfilerRecorderHandle>();
             ProfilerRecorderHandle.GetAvailable(handles);
-
-            var dump = new StringBuilder();
+            var sb = new StringBuilder();
             foreach (var h in handles)
             {
                 var d = ProfilerRecorderHandle.GetDescription(h);
-                if (d.UnitType != ProfilerMarkerDataUnit.TimeNanoseconds) continue;
-                string name = d.Name;
-                if (!name.StartsWith("Game.", StringComparison.Ordinal) || name.IndexOf("System", StringComparison.Ordinal) < 0) continue;
-
-                dump.AppendLine($"{d.Category.Name} | {name}");
-                if (_recorders.Count >= MaxMarkers) continue;
-                _names.Add(name);
-                _recorders.Add(new ProfilerRecorder(h, Capacity, ProfilerRecorderOptions.Default));
+                sb.AppendLine($"{d.Category.Name} | {d.Name}");
             }
-
-            Mod.Log.Info($"System timing: {handles.Count} markers available, {_recorders.Count} attached (see DiagnosticMod.markers.log)");
-            MarkerLog.Info(dump.ToString());
-        }
-
-        private void DisposeSystemRecorders()
-        {
-            if (_recorders == null) return;
-            foreach (var r in _recorders) r.Dispose();
-            _recorders = null;
+            MarkerLog.Info(sb.ToString());
         }
     }
 }

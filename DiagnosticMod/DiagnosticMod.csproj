@@ -13,6 +13,10 @@
   <Import Project="$(ToolPath)\Mod.targets" />
 
   <ItemGroup>
+    <PackageReference Include="Lib.Harmony" Version="2.2.2" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="Game"><Private>false</Private></Reference>
     <Reference Include="Colossal.Core"><Private>false</Private></Reference>
     <Reference Include="Colossal.Logging"><Private>false</Private></Reference>
