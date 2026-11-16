@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <RootNamespace>CleanupMod</RootNamespace>
+    <Configurations>Debug;Release</Configurations>
+  </PropertyGroup>
+
+  <!-- Sub-projects have their own csproj; keep their sources out of this build. -->
+  <ItemGroup>
+    <Compile Remove="DiagnosticMod\**" />
+  </ItemGroup>
+
+  <!-- Same imports as the official CS2 mod template; they need the Modding Toolchain (sets CSII_TOOLPATH). -->
+  <PropertyGroup>
+    <ToolPath>$([System.Environment]::GetEnvironmentVariable('CSII_TOOLPATH', 'EnvironmentVariableTarget.User'))</ToolPath>
+  </PropertyGroup>
+  <Import Project="$(ToolPath)\Mod.props" Condition="Exists('$(ToolPath)\Mod.props')" />
+  <Import Project="$(ToolPath)\Mod.targets" Condition="Exists('$(ToolPath)\Mod.targets')" />
+
+  <!-- Mod.props only sets the search path; each game DLL must still be referenced. -->
+  <ItemGroup>
+    <Reference Include="Game"><Private>false</Private></Reference>
+    <Reference Include="Colossal.Core"><Private>false</Private></Reference>
+    <Reference Include="Colossal.Logging"><Private>false</Private></Reference>
+    <Reference Include="Colossal.Mathematics"><Private>false</Private></Reference>
+    <Reference Include="Unity.Entities"><Private>false</Private></Reference>
+    <Reference Include="Unity.Collections"><Private>false</Private></Reference>
+    <Reference Include="Unity.Mathematics"><Private>false</Private></Reference>
+    <Reference Include="Unity.Burst"><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.CoreModule"><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>
