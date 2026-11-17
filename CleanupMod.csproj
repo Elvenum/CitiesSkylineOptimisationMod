@@ -9,6 +9,7 @@
   <!-- Sub-projects have their own csproj; keep their sources out of this build. -->
   <ItemGroup>
     <Compile Remove="DiagnosticMod\**" />
+    <Compile Remove="RenderTrimMod\**" />
   </ItemGroup>
 
   <!-- Same imports as the official CS2 mod template; they need the Modding Toolchain (sets CSII_TOOLPATH). -->
