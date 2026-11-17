@@ -82,7 +82,7 @@ namespace DiagnosticMod
                 $"citizens={_citizens.CalculateEntityCount()} vehicles={_vehicles.CalculateEntityCount()} " +
                 $"errors={Mod.ErrorCount}");
 
-            LogTopSystems(now, frames);
+            LogTopSystems(now, frames, dt);
 
             _samples = _ftSamples = 0;
             _cpu = _main = _render = _gpu = _mainProfiler = 0;

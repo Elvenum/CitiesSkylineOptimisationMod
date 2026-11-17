@@ -15,7 +15,7 @@ namespace DiagnosticMod
 
         public void OnLoad(UpdateSystem updateSystem)
         {
-            Log.Info($"DiagnosticMod v4 | app={Application.version} unity={Application.unityVersion} " +
+            Log.Info($"DiagnosticMod v5 | app={Application.version} unity={Application.unityVersion} " +
                      $"gpu={SystemInfo.graphicsDeviceName} vram={SystemInfo.graphicsMemorySize}MB " +
                      $"cpu={SystemInfo.processorType} cores={SystemInfo.processorCount} ram={SystemInfo.systemMemorySize}MB");
             try { SystemTimer.Install(); }
