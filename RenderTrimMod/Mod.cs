@@ -12,7 +12,7 @@ namespace RenderTrimMod
 
         public void OnLoad(UpdateSystem updateSystem)
         {
-            Log.Info("RenderTrimMod v2 | F8 = toggle effects (VFXSystem), F9 = toggle overlays (OverlayRenderSystem), " +
+            Log.Info("RenderTrimMod v2.1 | F8 = toggle effects (VFXSystem), F9 = toggle overlays (OverlayRenderSystem), " +
                      "F10 = toggle half-rate bone/light upload (experimental)");
             try { UploadThrottle.Install(); }
             catch (System.Exception e) { Log.Warn($"F10 upload throttle disabled: {e}"); } // F8/F9 still work
