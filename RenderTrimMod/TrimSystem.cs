@@ -18,6 +18,11 @@ namespace RenderTrimMod
             if (kb == null) return;
             if (kb.f8Key.wasPressedThisFrame) Toggle(Vfx);
             if (kb.f9Key.wasPressedThisFrame) Toggle(Overlay);
+            if (kb.f10Key.wasPressedThisFrame)
+            {
+                UploadThrottle.Enabled = !UploadThrottle.Enabled;
+                Mod.Log.Info($"half-rate upload enabled={UploadThrottle.Enabled}");
+            }
         }
 
         // Looked up by name so the mod doesn't depend on these types being public.
